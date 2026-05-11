@@ -23,9 +23,10 @@
             background-color: var(--bg-color);
             color: var(--text-color);
             font-family: 'Inter', -apple-system, sans-serif;
-            padding-bottom: 50px;
+            padding-bottom: env(safe-area-inset-bottom); /* 針對 iPhone 底部橫條優化 */
         }
 
+        /* 導航列 */
         .navbar {
             background-color: rgba(18, 18, 18, 0.95);
             backdrop-filter: blur(10px);
@@ -35,22 +36,24 @@
             z-index: 1000;
         }
 
+        /* 上傳區域 */
         .upload-section {
             background-color: var(--card-bg);
             border-radius: 20px;
-            padding: 25px;
+            padding: 20px;
             margin-top: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             border: 1px solid #333;
         }
 
+        /* 文字輸入框 - 加大且支援多行 */
         .form-control {
             background-color: #2a2a2a;
             border: 1px solid #444;
             color: white;
-            padding: 12px 15px;
+            padding: 15px;
             border-radius: 12px;
-            font-size: 16px; /* 防止手機輸入時畫面縮放 */
+            font-size: 16px;
+            resize: none; /* 禁止使用者手動拉伸，保持美觀 */
         }
 
         .form-control:focus {
@@ -60,60 +63,74 @@
             box-shadow: 0 0 0 0.25rem rgba(0, 242, 254, 0.25);
         }
 
+        /* 發佈按鈕 */
         .btn-primary {
             background: linear-gradient(45deg, #00f2fe 0%, #4facfe 100%);
             border: none;
             border-radius: 12px;
-            padding: 12px;
+            padding: 15px;
             font-weight: 600;
             font-size: 18px;
-            transition: transform 0.2s;
         }
 
-        .btn-primary:active {
-            transform: scale(0.98);
-        }
-
-        .story-card {
-            background-color: var(--card-bg);
-            border-radius: 20px;
-            overflow: hidden;
-            margin-bottom: 25px;
-            border: 1px solid #333;
-            animation: fadeIn 0.5s ease-in;
-        }
-
-        .story-img {
-            width: 100%;
-            aspect-ratio: 4 / 5;
-            object-fit: cover;
-        }
-
-        .story-content {
-            padding: 15px;
-        }
-
-        .story-time {
-            font-size: 0.8rem;
-            color: #888;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* 隱藏原生檔案上傳，使用自定義按鈕樣式 */
+        /* 檔案選擇按鈕 */
         .custom-file-upload {
             display: block;
             width: 100%;
             background: #333;
+            color: #aaa;
             text-align: center;
-            padding: 15px;
+            padding: 20px;
             border-radius: 12px;
             margin-bottom: 15px;
             cursor: pointer;
             border: 2px dashed #555;
+            font-size: 16px;
+        }
+
+        /* 限動卡片控制 - 解決圖片超出問題 */
+        .story-container {
+            max-width: 500px; /* 限制最大寬度，避免電腦版太大 */
+            margin: 0 auto;
+            padding: 0 15px;
+        }
+
+        .story-card {
+            background-color: var(--card-bg);
+            border-radius: 24px;
+            overflow: hidden;
+            margin-bottom: 30px;
+            border: 1px solid #333;
+            width: 100%; /* 強制卡片寬度符合容器 */
+        }
+
+        .story-img {
+            width: 100%;
+            height: auto; /* 高度自動 */
+            max-height: 70vh; /* 最高不超過螢幕 70%，避免長圖佔滿螢幕 */
+            display: block;
+            object-fit: cover; /* 滿版填充 */
+        }
+
+        .story-content {
+            padding: 20px;
+        }
+
+        .story-text {
+            font-size: 1.1rem;
+            line-height: 1.5;
+            white-space: pre-wrap; /* 支援多行文字換行顯示 */
+            margin-bottom: 10px;
+        }
+
+        .story-time {
+            font-size: 0.85rem;
+            color: #777;
+        }
+
+        .spinner-border {
+            width: 1.5rem;
+            height: 1.5rem;
         }
     </style>
 </head>
@@ -134,7 +151,7 @@
         <input type="file" id="fileInput" accept="image/*" style="display: none;">
         
         <div class="mb-3">
-            <input type="text" id="textContent" class="form-control" placeholder="說點什麼心情...">
+            <textarea id="textContent" class="form-control" rows="3" placeholder="說點什麼心情..."></textarea>
         </div>
         
         <button class="btn btn-primary w-100" id="uploadBtn" onclick="uploadStory()">發佈限時動態</button>
