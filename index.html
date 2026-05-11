@@ -14,36 +14,76 @@
     <div id="storyList"><!-- 限動會顯示在這裡 --></div>
 
     <script>
-        const _supabase = supabase.createClient('https://bumtcazpeeqdnhbdvahm.supabase.co', 'sb_publishable_w5dMgkVZ9pbF3utbsSje-A_xM1MGsoJ');
+        const _supabase = supabase.createClient('https://bumtcazpeeqdnhbdvahm.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1bXRjYXpwZWVxZG5oYmR2YWhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0NzkxNjMsImV4cCI6MjA5NDA1NTE2M30.nYJ22R9cqSCb0cO3NjJe5KLmCZEOC-v7AFk0r5zD3Dg');
 
         async function uploadStory() {
-            const file = document.getElementById('fileInput').files[0];
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
             const content = document.getElementById('textContent').value;
 
-            // 1. 上傳圖片到 Storage
-            const { data, error } = await _supabase.storage
-                .from('photos')
-                .upload(`public/${Date.now()}.png`, file);
+            if (!file) {
+                alert("請先選擇一張照片");
+                return;
+            }
 
-            const imgUrl = _supabase.storage.from('photos').getPublicUrl(data.path).data.publicUrl;
+            try {
+                // 1. 上傳圖片到 Storage
+                const fileName = `public/${Date.now()}.png`;
+                const { data: uploadData, error: uploadError } = await _supabase.storage
+                    .from('photos')
+                    .upload(fileName, file);
 
-            // 2. 寫入資料庫
-            await _supabase.from('stories').insert([{ content, image_url: imgUrl }]);
-            location.reload();
+                if (uploadError) throw uploadError;
+
+                // 取得公開連結
+                const { data: urlData } = _supabase.storage.from('photos').getPublicUrl(fileName);
+                const imgUrl = urlData.publicUrl;
+
+                // 2. 寫入資料庫 (請確認資料表名稱為 stories)
+                const { error: dbError } = await _supabase
+                    .from('stories')
+                    .insert([{ content: content, image_url: imgUrl }]);
+
+                if (dbError) throw dbError;
+
+                alert("上傳成功！");
+                location.reload(); // 重新整理頁面顯示新動態
+            } catch (err) {
+                console.error(err);
+                alert("錯誤: " + (err.message || "上傳失敗，請檢查後台 RLS 設定"));
+            }
         }
 
         async function loadStories() {
+            // 計算 24 小時前的時間
             const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
             
-            // 只撈取過去 24 小時內的資料
-            const { data } = await _supabase
+            // 只撈取過去 24 小時內的資料，並按時間排序
+            const { data, error } = await _supabase
                 .from('stories')
                 .select('*')
-                .gt('created_at', yesterday);
+                .gt('created_at', yesterday)
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error("讀取失敗:", error);
+                return;
+            }
 
             const container = document.getElementById('storyList');
+            container.innerHTML = ""; // 清空載入中文字
+            
+            if (data.length === 0) {
+                container.innerHTML = "<p>目前沒有限時動態</p>";
+            }
+
             data.forEach(s => {
-                container.innerHTML += `<div><img src="${s.image_url}" width="200"><p>${s.content}</p></div>`;
+                container.innerHTML += `
+                    <div style="margin-bottom: 20px; border-bottom: 1px solid #ccc; padding-bottom: 10px;">
+                        <img src="${s.image_url}" style="max-width: 300px; display: block; border-radius: 8px;">
+                        <p style="font-weight: bold;">${s.content || "(無文字)"}</p>
+                        <small style="color: gray;">發佈時間: ${new Date(s.created_at).toLocaleString()}</small>
+                    </div>`;
             });
         }
         loadStories();
