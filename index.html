@@ -167,6 +167,11 @@
     </div>
 </div>
 
+<!-- 放大檢視的遮罩層 -->
+<div id="imageOverlay" onclick="closeImage()" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; cursor: zoom-out; align-items: center; justify-content: center;">
+    <img id="expandedImg" style="max-width: 95%; max-height: 95%; border-radius: 10px; box-shadow: 0 0 20px rgba(255,255,255,0.1);">
+</div>
+
     <script>
         const _supabase = supabase.createClient('https://bumtcazpeeqdnhbdvahm.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1bXRjYXpwZWVxZG5oYmR2YWhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0NzkxNjMsImV4cCI6MjA5NDA1NTE2M30.nYJ22R9cqSCb0cO3NjJe5KLmCZEOC-v7AFk0r5zD3Dg');
 
@@ -238,7 +243,7 @@
             container.innerHTML += `
                 <div class="col-12 col-md-8 col-lg-6">
                     <div class="story-card">
-                        <img src="${s.image_url}" class="story-img" loading="lazy">
+                        <img src="${s.image_url}" class="story-img" loading="lazy" onclick="expandImage(this.src)" style="cursor: zoom-in;">
                         <div class="story-content">
                             <p class="mb-1">${s.content || ""}</p>
                             <span class="story-time">今天 ${timeStr}</span>
@@ -246,6 +251,22 @@
                     </div>
                 </div>`;
         });
+    }
+
+    // 放大圖片
+    function expandImage(src) {
+        const overlay = document.getElementById('imageOverlay');
+        const fullImg = document.getElementById('expandedImg');
+        fullImg.src = src;
+        overlay.style.display = 'flex'; // 顯示遮罩
+        document.body.style.overflow = 'hidden'; // 禁止底層網頁滾動
+    }
+
+    // 關閉放大
+    function closeImage() {
+        const overlay = document.getElementById('imageOverlay');
+        overlay.style.display = 'none'; // 隱藏遮罩
+        document.body.style.overflow = 'auto'; // 恢復網頁滾動
     }
     loadStories();
     </script>
