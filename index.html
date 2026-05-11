@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>我的限時動態</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>發佈限時動態</h1>
+    <input type="file" id="fileInput">
+    <input type="text" id="textContent" placeholder="說點什麼...">
+    <button onclick="uploadStory()">上傳</button>
+
+    <hr>
+    <div id="storyList"><!-- 限動會顯示在這裡 --></div>
+
+    <script>
+        const _supabase = supabase.createClient('https://bumtcazpeeqdnhbdvahm.supabase.co', 'sb_publishable_w5dMgkVZ9pbF3utbsSje-A_xM1MGsoJ');
+
+        async function uploadStory() {
+            const file = document.getElementById('fileInput').files[0];
+            const content = document.getElementById('textContent').value;
+
+            // 1. 上傳圖片到 Storage
+            const { data, error } = await _supabase.storage
+                .from('photos')
+                .upload(`public/${Date.now()}.png`, file);
+
+            const imgUrl = _supabase.storage.from('photos').getPublicUrl(data.path).data.publicUrl;
+
+            // 2. 寫入資料庫
+            await _supabase.from('stories').insert([{ content, image_url: imgUrl }]);
+            location.reload();
+        }
+
+        async function loadStories() {
+            const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+            
+            // 只撈取過去 24 小時內的資料
+            const { data } = await _supabase
+                .from('stories')
+                .select('*')
+                .gt('created_at', yesterday);
+
+            const container = document.getElementById('storyList');
+            data.forEach(s => {
+                container.innerHTML += `<div><img src="${s.image_url}" width="200"><p>${s.content}</p></div>`;
+            });
+        }
+        loadStories();
+    </script>
+</body>
+</html>
