@@ -1,92 +1,236 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-TW">
 <head>
-    <title>我的限時動態</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>限時動態 | Stories</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --accent-color: #00f2fe;
+            --text-color: #e0e0e0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Inter', -apple-system, sans-serif;
+            padding-bottom: 50px;
+        }
+
+        .navbar {
+            background-color: rgba(18, 18, 18, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid #333;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .upload-section {
+            background-color: var(--card-bg);
+            border-radius: 20px;
+            padding: 25px;
+            margin-top: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 1px solid #333;
+        }
+
+        .form-control {
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            color: white;
+            padding: 12px 15px;
+            border-radius: 12px;
+            font-size: 16px; /* 防止手機輸入時畫面縮放 */
+        }
+
+        .form-control:focus {
+            background-color: #2a2a2a;
+            color: white;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 0.25rem rgba(0, 242, 254, 0.25);
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #00f2fe 0%, #4facfe 100%);
+            border: none;
+            border-radius: 12px;
+            padding: 12px;
+            font-weight: 600;
+            font-size: 18px;
+            transition: transform 0.2s;
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        .story-card {
+            background-color: var(--card-bg);
+            border-radius: 20px;
+            overflow: hidden;
+            margin-bottom: 25px;
+            border: 1px solid #333;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        .story-img {
+            width: 100%;
+            aspect-ratio: 4 / 5;
+            object-fit: cover;
+        }
+
+        .story-content {
+            padding: 15px;
+        }
+
+        .story-time {
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 隱藏原生檔案上傳，使用自定義按鈕樣式 */
+        .custom-file-upload {
+            display: block;
+            width: 100%;
+            background: #333;
+            text-align: center;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            border: 2px dashed #555;
+        }
+    </style>
 </head>
 <body>
-    <h1>發佈限時動態</h1>
-    <input type="file" id="fileInput">
-    <input type="text" id="textContent" placeholder="說點什麼...">
-    <button onclick="uploadStory()">上傳</button>
 
-    <hr>
-    <div id="storyList"><!-- 限動會顯示在這裡 --></div>
+<nav class="navbar">
+    <div class="container text-center">
+        <span class="navbar-brand mb-0 h1 mx-auto text-white" style="letter-spacing: 2px;">STORIES</span>
+    </div>
+</nav>
+
+<div class="container">
+    <!-- 上傳區塊 -->
+    <div class="upload-section">
+        <label for="fileInput" class="custom-file-upload" id="fileLabel">
+            📸 點擊選擇照片
+        </label>
+        <input type="file" id="fileInput" accept="image/*" style="display: none;">
+        
+        <div class="mb-3">
+            <input type="text" id="textContent" class="form-control" placeholder="說點什麼心情...">
+        </div>
+        
+        <button class="btn btn-primary w-100" id="uploadBtn" onclick="uploadStory()">發佈限時動態</button>
+    </div>
+
+    <h5 class="mt-5 mb-4" style="color: #888; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px;">最新動態 (24h)</h5>
+
+    <!-- 列表顯示區塊 -->
+    <div id="storyList" class="row justify-content-center">
+        <div class="text-center py-5">
+            <div class="spinner-border text-info" role="status"></div>
+        </div>
+    </div>
+</div>
 
     <script>
         const _supabase = supabase.createClient('https://bumtcazpeeqdnhbdvahm.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1bXRjYXpwZWVxZG5oYmR2YWhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0NzkxNjMsImV4cCI6MjA5NDA1NTE2M30.nYJ22R9cqSCb0cO3NjJe5KLmCZEOC-v7AFk0r5zD3Dg');
 
-        async function uploadStory() {
-            const fileInput = document.getElementById('fileInput');
-            const file = fileInput.files[0];
-            const content = document.getElementById('textContent').value;
+        // 顯示選擇的檔名
+    document.getElementById('fileInput').onchange = function() {
+        document.getElementById('fileLabel').innerHTML = "✅ 已選擇照片";
+        document.getElementById('fileLabel').style.borderColor = "#00f2fe";
+    };
 
-            if (!file) {
-                alert("請先選擇一張照片");
-                return;
-            }
+    async function uploadStory() {
+        const fileInput = document.getElementById('fileInput');
+        const file = fileInput.files[0];
+        const content = document.getElementById('textContent').value;
+        const btn = document.getElementById('uploadBtn');
 
-            try {
-                // 1. 上傳圖片到 Storage
-                const fileName = `public/${Date.now()}.png`;
-                const { data: uploadData, error: uploadError } = await _supabase.storage
-                    .from('photos')
-                    .upload(fileName, file);
-
-                if (uploadError) throw uploadError;
-
-                // 取得公開連結
-                const { data: urlData } = _supabase.storage.from('photos').getPublicUrl(fileName);
-                const imgUrl = urlData.publicUrl;
-
-                // 2. 寫入資料庫 (請確認資料表名稱為 stories)
-                const { error: dbError } = await _supabase
-                    .from('stories')
-                    .insert([{ content: content, image_url: imgUrl }]);
-
-                if (dbError) throw dbError;
-
-                alert("上傳成功！");
-                location.reload(); // 重新整理頁面顯示新動態
-            } catch (err) {
-                console.error(err);
-                alert("錯誤: " + (err.message || "上傳失敗，請檢查後台 RLS 設定"));
-            }
+        if (!file) {
+            alert("請先選擇一張照片");
+            return;
         }
 
-        async function loadStories() {
-            // 計算 24 小時前的時間
-            const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-            
-            // 只撈取過去 24 小時內的資料，並按時間排序
-            const { data, error } = await _supabase
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 上傳中...';
+
+        try {
+            const fileName = `public/${Date.now()}.png`;
+            const { data: uploadData, error: uploadError } = await _supabase.storage
+                .from('photos')
+                .upload(fileName, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: urlData } = _supabase.storage.from('photos').getPublicUrl(fileName);
+            const imgUrl = urlData.publicUrl;
+
+            const { error: dbError } = await _supabase
                 .from('stories')
-                .select('*')
-                .gt('created_at', yesterday)
-                .order('created_at', { ascending: false });
+                .insert([{ content: content, image_url: imgUrl }]);
 
-            if (error) {
-                console.error("讀取失敗:", error);
-                return;
-            }
+            if (dbError) throw dbError;
 
-            const container = document.getElementById('storyList');
-            container.innerHTML = ""; // 清空載入中文字
-            
-            if (data.length === 0) {
-                container.innerHTML = "<p>目前沒有限時動態</p>";
-            }
-
-            data.forEach(s => {
-                container.innerHTML += `
-                    <div style="margin-bottom: 20px; border-bottom: 1px solid #ccc; padding-bottom: 10px;">
-                        <img src="${s.image_url}" style="max-width: 300px; display: block; border-radius: 8px;">
-                        <p style="font-weight: bold;">${s.content || "(無文字)"}</p>
-                        <small style="color: gray;">發佈時間: ${new Date(s.created_at).toLocaleString()}</small>
-                    </div>`;
-            });
+            location.reload();
+        } catch (err) {
+            console.error(err);
+            alert("錯誤: " + (err.message || "上傳失敗"));
+            btn.disabled = false;
+            btn.innerHTML = '發佈限時動態';
         }
-        loadStories();
+    }
+
+    async function loadStories() {
+        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        
+        const { data, error } = await _supabase
+            .from('stories')
+            .select('*')
+            .gt('created_at', yesterday)
+            .order('created_at', { ascending: false });
+
+        const container = document.getElementById('storyList');
+        container.innerHTML = "";
+        
+        if (error || data.length === 0) {
+            container.innerHTML = '<div class="text-center text-muted mt-4">目前沒有新的動態</div>';
+            return;
+        }
+
+        data.forEach(s => {
+            const timeStr = new Date(s.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            container.innerHTML += `
+                <div class="col-12 col-md-8 col-lg-6">
+                    <div class="story-card">
+                        <img src="${s.image_url}" class="story-img" loading="lazy">
+                        <div class="story-content">
+                            <p class="mb-1">${s.content || ""}</p>
+                            <span class="story-time">今天 ${timeStr}</span>
+                        </div>
+                    </div>
+                </div>`;
+        });
+    }
+    loadStories();
     </script>
 </body>
 </html>
