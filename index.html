@@ -23,7 +23,7 @@
             background-color: var(--bg-color);
             color: var(--text-color);
             font-family: 'Inter', -apple-system, sans-serif;
-            padding-bottom: env(safe-area-inset-bottom); /* 針對 iPhone 底部橫條優化 */
+            padding-bottom: env(safe-area-inset-bottom);
         }
 
         /* 導航列 */
@@ -36,6 +36,22 @@
             z-index: 1000;
         }
 
+        /* 包廂標籤樣式 */
+        .room-badge {
+            background: #2a2a2a;
+            border: 1px solid var(--accent-color);
+            color: var(--accent-color);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .room-badge:hover {
+            background: var(--accent-color);
+            color: #000;
+        }
+
         /* 上傳區域 */
         .upload-section {
             background-color: var(--card-bg);
@@ -45,7 +61,6 @@
             border: 1px solid #333;
         }
 
-        /* 文字輸入框 - 加大且支援多行 */
         .form-control {
             background-color: #2a2a2a;
             border: 1px solid #444;
@@ -53,7 +68,7 @@
             padding: 15px;
             border-radius: 12px;
             font-size: 16px;
-            resize: none; /* 禁止使用者手動拉伸，保持美觀 */
+            resize: none;
         }
 
         .form-control:focus {
@@ -63,7 +78,6 @@
             box-shadow: 0 0 0 0.25rem rgba(0, 242, 254, 0.25);
         }
 
-        /* 發佈按鈕 */
         .btn-primary {
             background: linear-gradient(45deg, #00f2fe 0%, #4facfe 100%);
             border: none;
@@ -73,7 +87,6 @@
             font-size: 18px;
         }
 
-        /* 檔案選擇按鈕 */
         .custom-file-upload {
             display: block;
             width: 100%;
@@ -88,28 +101,22 @@
             font-size: 16px;
         }
 
-        /* 限動卡片控制 - 解決圖片超出問題 */
-        .story-container {
-            max-width: 500px; /* 限制最大寬度，避免電腦版太大 */
-            margin: 0 auto;
-            padding: 0 15px;
-        }
-
+        /* 限動卡片控制 */
         .story-card {
             background-color: var(--card-bg);
             border-radius: 24px;
             overflow: hidden;
             margin-bottom: 30px;
             border: 1px solid #333;
-            width: 100%; /* 強制卡片寬度符合容器 */
+            width: 100%;
         }
 
         .story-img {
             width: 100%;
-            height: auto; /* 高度自動 */
-            max-height: 70vh; /* 最高不超過螢幕 70%，避免長圖佔滿螢幕 */
+            height: auto;
+            max-height: 70vh;
             display: block;
-            object-fit: cover; /* 滿版填充 */
+            object-fit: cover;
         }
 
         .story-content {
@@ -119,7 +126,7 @@
         .story-text {
             font-size: 1.1rem;
             line-height: 1.5;
-            white-space: pre-wrap; /* 支援多行文字換行顯示 */
+            white-space: pre-wrap;
             margin-bottom: 10px;
         }
 
@@ -128,26 +135,43 @@
             color: #777;
         }
 
-        .spinner-border {
-            width: 1.5rem;
-            height: 1.5rem;
+        /* 放大檢視遮罩 */
+        #imageOverlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 2000;
+            cursor: zoom-out;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
         }
     </style>
 </head>
 <body>
 
 <nav class="navbar">
-    <div class="container text-center">
-        <span class="navbar-brand mb-0 h1 mx-auto text-white" style="letter-spacing: 2px;">STORIES</span>
+    <div class="container d-flex flex-column align-items-center py-2">
+        <span class="text-white fw-bold mb-1" style="letter-spacing: 2px;">STORIES</span>
+        <!-- 包廂顯示與切換 -->
+        <div id="roomDisplay" class="room-badge" onclick="toggleRoomInput()">🏠 包廂: lobby</div>
+        <div id="roomInputGroup" class="mt-2 w-100" style="display: none; max-width: 300px;">
+            <div class="input-group">
+                <input type="text" id="roomInput" class="form-control py-1 px-2" style="font-size: 14px; height: auto;" placeholder="輸入新代號">
+                <button class="btn btn-sm btn-info text-dark fw-bold" onclick="changeRoom()">進入</button>
+            </div>
+        </div>
     </div>
 </nav>
 
-<div class="container">
+<div class="container" style="max-width: 600px;">
     <!-- 上傳區塊 -->
     <div class="upload-section">
-        <label for="fileInput" class="custom-file-upload" id="fileLabel">
-            📸 點擊選擇照片
-        </label>
+        <label for="fileInput" class="custom-file-upload" id="fileLabel">📸 點擊選擇照片</label>
         <input type="file" id="fileInput" accept="image/*" style="display: none;">
         
         <div class="mb-3">
@@ -157,7 +181,7 @@
         <button class="btn btn-primary w-100" id="uploadBtn" onclick="uploadStory()">發佈限時動態</button>
     </div>
 
-    <h5 class="mt-5 mb-4" style="color: #888; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px;">最新動態 (24h)</h5>
+    <h5 class="mt-5 mb-4 text-center" style="color: #888; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px;">最新動態 (24h)</h5>
 
     <!-- 列表顯示區塊 -->
     <div id="storyList" class="row justify-content-center">
@@ -168,17 +192,39 @@
 </div>
 
 <!-- 放大檢視的遮罩層 -->
-<div id="imageOverlay" onclick="closeImage()" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; cursor: zoom-out; align-items: center; justify-content: center;">
-    <img id="expandedImg" style="max-width: 95%; max-height: 95%; border-radius: 10px; box-shadow: 0 0 20px rgba(255,255,255,0.1);">
+<div id="imageOverlay" onclick="closeImage()">
+    <img id="expandedImg" style="max-width: 95%; max-height: 95%; border-radius: 10px; box-shadow: 0 0 20px rgba(255,255,255,0.1); object-fit: contain;">
 </div>
 
-    <script>
-        const _supabase = supabase.createClient('https://bumtcazpeeqdnhbdvahm.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1bXRjYXpwZWVxZG5oYmR2YWhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0NzkxNjMsImV4cCI6MjA5NDA1NTE2M30.nYJ22R9cqSCb0cO3NjJe5KLmCZEOC-v7AFk0r5zD3Dg');
+<script>
+    // --- 請填入你的 Supabase 資訊 ---
+    const _supabase = supabase.createClient('https://bumtcazpeeqdnhbdvahm.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1bXRjYXpwZWVxZG5oYmR2YWhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0NzkxNjMsImV4cCI6MjA5NDA1NTE2M30.nYJ22R9cqSCb0cO3NjJe5KLmCZEOC-v7AFk0r5zD3Dg');
 
-        // 顯示選擇的檔名
+    // 包廂邏輯
+    let currentRoom = window.location.hash.substring(1) || 'lobby';
+    document.getElementById('roomDisplay').innerText = `🏠 包廂: ${currentRoom}`;
+    document.getElementById('roomInput').value = currentRoom;
+
+    function toggleRoomInput() {
+        const group = document.getElementById('roomInputGroup');
+        group.style.display = group.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function changeRoom() {
+        const val = document.getElementById('roomInput').value.trim();
+        if(val) {
+            window.location.hash = val;
+            location.reload();
+        }
+    }
+
+    // 顯示選擇狀態
     document.getElementById('fileInput').onchange = function() {
-        document.getElementById('fileLabel').innerHTML = "✅ 已選擇照片";
-        document.getElementById('fileLabel').style.borderColor = "#00f2fe";
+        if(this.files[0]) {
+            document.getElementById('fileLabel').innerHTML = "✅ 已選擇照片";
+            document.getElementById('fileLabel').style.borderColor = "#00f2fe";
+            document.getElementById('fileLabel').style.color = "#00f2fe";
+        }
     };
 
     async function uploadStory() {
@@ -187,10 +233,7 @@
         const content = document.getElementById('textContent').value;
         const btn = document.getElementById('uploadBtn');
 
-        if (!file) {
-            alert("請先選擇一張照片");
-            return;
-        }
+        if (!file) { alert("請先選擇一張照片"); return; }
 
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 上傳中...';
@@ -208,16 +251,14 @@
 
             const { error: dbError } = await _supabase
                 .from('stories')
-                .insert([{ content: content, image_url: imgUrl }]);
+                .insert([{ content: content, image_url: imgUrl, room_id: currentRoom }]);
 
             if (dbError) throw dbError;
-
             location.reload();
         } catch (err) {
-            console.error(err);
             alert("錯誤: " + (err.message || "上傳失敗"));
             btn.disabled = false;
-            btn.innerHTML = '發佈限時動態';
+            btn.innerHTML = '發佈到此包廂';
         }
     }
 
@@ -228,24 +269,25 @@
             .from('stories')
             .select('*')
             .gt('created_at', yesterday)
+            .eq('room_id', currentRoom)
             .order('created_at', { ascending: false });
 
         const container = document.getElementById('storyList');
         container.innerHTML = "";
         
-        if (error || data.length === 0) {
-            container.innerHTML = '<div class="text-center text-muted mt-4">目前沒有新的動態</div>';
+        if (error || !data || data.length === 0) {
+            container.innerHTML = '<div class="text-center text-muted mt-4">目前沒有動態</div>';
             return;
         }
 
         data.forEach(s => {
             const timeStr = new Date(s.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             container.innerHTML += `
-                <div class="col-12 col-md-8 col-lg-6">
-                    <div class="story-card">
+                <div class="col-12">
+                    <div class="story-card shadow">
                         <img src="${s.image_url}" class="story-img" loading="lazy" onclick="expandImage(this.src)" style="cursor: zoom-in;">
                         <div class="story-content">
-                            <p class="mb-1">${s.content || ""}</p>
+                            <p class="story-text text-white">${s.content || ""}</p>
                             <span class="story-time">今天 ${timeStr}</span>
                         </div>
                     </div>
@@ -253,22 +295,20 @@
         });
     }
 
-    // 放大圖片
     function expandImage(src) {
         const overlay = document.getElementById('imageOverlay');
         const fullImg = document.getElementById('expandedImg');
         fullImg.src = src;
-        overlay.style.display = 'flex'; // 顯示遮罩
-        document.body.style.overflow = 'hidden'; // 禁止底層網頁滾動
+        overlay.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
     }
 
-    // 關閉放大
     function closeImage() {
-        const overlay = document.getElementById('imageOverlay');
-        overlay.style.display = 'none'; // 隱藏遮罩
-        document.body.style.overflow = 'auto'; // 恢復網頁滾動
+        document.getElementById('imageOverlay').style.display = 'none';
+        document.body.style.overflow = 'auto';
     }
+
     loadStories();
-    </script>
+</script>
 </body>
 </html>
