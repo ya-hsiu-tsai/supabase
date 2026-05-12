@@ -156,12 +156,12 @@
 
 <nav class="navbar">
     <div class="container d-flex flex-column align-items-center py-2">
-        <span class="text-white fw-bold mb-1" style="letter-spacing: 2px;">STORIES</span>
+        <span class="text-white fw-bold mb-1 h1" style="letter-spacing: 2px;">STORIES</span>
         <!-- 包廂顯示與切換 -->
-        <div id="roomDisplay" class="room-badge" onclick="toggleRoomInput()">🏠 包廂: lobby</div>
-        <div id="roomInputGroup" class="mt-2 w-100" style="display: none; max-width: 300px;">
+        <div id="roomDisplay" class="room-badge">🏠 包廂: lobby</div>
+        <div id="roomInputGroup" class="mt-2 w-100" style="max-width: 300px;">
             <div class="input-group">
-                <input type="text" id="roomInput" class="form-control py-1 px-2" style="font-size: 14px; height: auto;" placeholder="輸入新代號">
+                <input type="text" id="roomInput" class="form-control py-1 px-2" style="font-size: 14px; height: auto;">
                 <button class="btn btn-sm btn-info text-dark fw-bold" onclick="changeRoom()">進入</button>
             </div>
         </div>
@@ -204,11 +204,6 @@
     let currentRoom = window.location.hash.substring(1) || 'lobby';
     document.getElementById('roomDisplay').innerText = `🏠 包廂: ${currentRoom}`;
     document.getElementById('roomInput').value = currentRoom;
-
-    function toggleRoomInput() {
-        const group = document.getElementById('roomInputGroup');
-        group.style.display = group.style.display === 'none' ? 'block' : 'none';
-    }
 
     function changeRoom() {
         const val = document.getElementById('roomInput').value.trim();
