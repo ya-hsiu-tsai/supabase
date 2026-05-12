@@ -314,6 +314,15 @@
         }
 
         data.forEach(s => {
+            const postDate = new Date(s.created_at);
+            const now = new Date();
+            
+            // 判斷是否為同一天 (年、月、日都相同才是今天)
+            const isToday = postDate.getDate() === now.getDate() && 
+                            postDate.getMonth() === now.getMonth() && 
+                            postDate.getFullYear() === now.getFullYear();
+
+            const dateLabel = isToday ? "今天" : "昨天";
             const timeStr = new Date(s.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             container.innerHTML += `
                 <div class="col-12">
@@ -321,7 +330,7 @@
                         <img src="${s.image_url}" class="story-img" loading="lazy" onclick="expandImage(this.src)" style="cursor: zoom-in;">
                         <div class="story-content">
                             <p class="story-text text-white">${s.content || ""}</p>
-                            <span class="story-time">今天 ${timeStr}</span>
+                            <span class="story-time">${dateLabel} ${timeStr}</span>
                         </div>
                     </div>
                 </div>`;
