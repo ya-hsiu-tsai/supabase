@@ -197,46 +197,66 @@
 </div>
 
 <script>
-    // --- 請填入你的 Supabase 資訊 ---
+    // --- 1. 初始化 Supabase ---
     const _supabase = supabase.createClient('https://bumtcazpeeqdnhbdvahm.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1bXRjYXpwZWVxZG5oYmR2YWhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0NzkxNjMsImV4cCI6MjA5NDA1NTE2M30.nYJ22R9cqSCb0cO3NjJe5KLmCZEOC-v7AFk0r5zD3Dg');
 
-    // 包廂邏輯
-    // --- 1. 取得當前包廂 (從 URL # 獲取) ---
+    // --- 2. 包廂處理邏輯 ---
     function getRoomFromHash() {
         return decodeURIComponent(window.location.hash.substring(1)) || 'lobby';
     }
     let currentRoom = getRoomFromHash();
 
-    // --- 2. 初始化頁面 UI ---
     const roomInput = document.getElementById('roomInput');
     roomInput.value = currentRoom;
+    document.getElementById('roomDisplay').innerText = `🏠 包廂: ${currentRoom}`;
 
-    // --- 3. 監聽網址 Hash 變化 (重點：網址改了就自動重整) ---
-    window.addEventListener('hashchange', () => {
-        location.reload(); // 當使用者手動改網址後面的 #，直接重新整理進入新包廂
-    });
+    window.addEventListener('hashchange', () => location.reload());
 
-    // --- 4. 切換包廂按鈕的功能 ---
     function changeRoom() {
         const val = roomInput.value.trim();
-        if(val) {
-            window.location.hash = val; // 這會觸發 hashchange 事件
-        } else {
-            alert("請輸入包廂代號");
+        if(val) window.location.hash = val;
+        else alert("請輸入包廂代號");
+    }
+
+    roomInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') changeRoom(); });
+
+    // --- 3. 被動式自動清理功能 (核心改動) ---
+    async function autoCleanup() {
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+        // 找出所有超過 24 小時的動態（不限包廂）
+        const { data: expiredItems, error } = await _supabase
+            .from('stories')
+            .select('id, image_url')
+            .lt('created_at', twentyFourHoursAgo);
+
+        if (error || !expiredItems || expiredItems.length === 0) return;
+
+        console.log(`發現 ${expiredItems.length} 筆過期動態，啟動背景清理...`);
+
+        for (const item of expiredItems) {
+            try {
+                // 提取 Storage 檔案名稱
+                const fileName = item.image_url.split('/photos/')[1];
+                
+                // 刪除圖片檔
+                await _supabase.storage.from('photos').remove([fileName]);
+                
+                // 刪除資料庫紀錄
+                await _supabase.from('stories').delete().eq('id', item.id);
+            } catch (e) {
+                console.error("清理失敗:", e);
+            }
         }
     }
 
-    // 支援 Enter 鍵
-    roomInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') changeRoom();
-    });
-
-    // 顯示選擇狀態
+    // --- 4. 上傳與顯示 ---
     document.getElementById('fileInput').onchange = function() {
         if(this.files[0]) {
-            document.getElementById('fileLabel').innerHTML = "✅ 已選擇照片";
-            document.getElementById('fileLabel').style.borderColor = "#00f2fe";
-            document.getElementById('fileLabel').style.color = "#00f2fe";
+            const label = document.getElementById('fileLabel');
+            label.innerHTML = "✅ 已選擇照片";
+            label.style.borderColor = "#00f2fe";
+            label.style.color = "#00f2fe";
         }
     };
 
@@ -254,28 +274,28 @@
         try {
             const fileName = `public/${Date.now()}.png`;
             const { data: uploadData, error: uploadError } = await _supabase.storage
-                .from('photos')
-                .upload(fileName, file);
+                .from('photos').upload(fileName, file);
 
             if (uploadError) throw uploadError;
 
             const { data: urlData } = _supabase.storage.from('photos').getPublicUrl(fileName);
-            const imgUrl = urlData.publicUrl;
-
             const { error: dbError } = await _supabase
                 .from('stories')
-                .insert([{ content: content, image_url: imgUrl, room_id: currentRoom }]);
+                .insert([{ content: content, image_url: urlData.publicUrl, room_id: currentRoom }]);
 
             if (dbError) throw dbError;
             location.reload();
         } catch (err) {
-            alert("錯誤: " + (err.message || "上傳失敗"));
+            alert("上傳失敗: " + err.message);
             btn.disabled = false;
-            btn.innerHTML = '發佈到此包廂';
+            btn.innerHTML = '發佈限時動態';
         }
     }
 
     async function loadStories() {
+        // 執行背景清理 (不等待它完成，直接繼續往下跑)
+        autoCleanup();
+
         const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
         
         const { data, error } = await _supabase
@@ -308,6 +328,7 @@
         });
     }
 
+    // --- 圖片放大功能 ---
     function expandImage(src) {
         const overlay = document.getElementById('imageOverlay');
         const fullImg = document.getElementById('expandedImg');
@@ -321,6 +342,7 @@
         document.body.style.overflow = 'auto';
     }
 
+    // 初始化載入
     loadStories();
 </script>
 </body>
